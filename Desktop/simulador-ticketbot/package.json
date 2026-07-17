@@ -5,11 +5,20 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "clasp:login": "clasp login",
+    "clasp:create": "bash scripts/create-apps-script-projects.sh",
+    "clasp:push:dev": "cd apps-script/dev && clasp push --force",
+    "clasp:push:prod": "cd apps-script/prod && clasp push --force",
+    "clasp:open:dev": "cd apps-script/dev && clasp open-script",
+    "clasp:open:prod": "cd apps-script/prod && clasp open-script",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "type": "commonjs",
   "dependencies": {
     "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.3.0"
   }
 }

@@ -6,8 +6,8 @@
 | :---- | :---- |
 | **Stakeholders** | [Gustavo Armando Vallejo Ruiz](mailto:gustavovallejo@habi.co), [Angel Gomez Reyes](mailto:angelgomez@habi.co), [Sandra Liliana Soto Calderon](mailto:lilianasoto@habi.co) |
 | **Link de Repo en Github:**  | [https://github.com/jeffersonbejarano-bit/Prometeo.git](https://github.com/jeffersonbejarano-bit/Prometeo.git) |
-| **Link de AppScript Dev:** | \[Se llena luego en la ejecución\] |
-| **Link de AppScript Prod:** | \[Se llena luego en la ejecución\] |
+| **Link de AppScript Dev:** | Pendiente de `npm run clasp:create` → carpeta `apps-script/dev` (Prometeo Aprobologia DEV) |
+| **Link de AppScript Prod:** | Pendiente de `npm run clasp:create` → carpeta `apps-script/prod` (Prometeo Aprobologia PROD) |
 
 ## **I. PRD (Product Requirement Document)**
 
