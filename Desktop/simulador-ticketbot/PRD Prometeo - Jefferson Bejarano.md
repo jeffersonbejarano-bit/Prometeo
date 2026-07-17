@@ -5,7 +5,7 @@
 | Project Owner (DRI) | [Jefferson Guillermo Bejarano Granados](mailto:jeffersonbejarano@habi.co) |
 | :---- | :---- |
 | **Stakeholders** | [Gustavo Armando Vallejo Ruiz](mailto:gustavovallejo@habi.co), [Angel Gomez Reyes](mailto:angelgomez@habi.co), [Sandra Liliana Soto Calderon](mailto:lilianasoto@habi.co) |
-| **Link de Repo en Github:**  | [https://github.com/jeffersonbejarano-bit/Prometeo.git](https://github.com/jeffersonbejarano-bit/Prometeo.git) |
+| **Link de Repo en Github:**  | [https://github.com/jeffersonbejarano-bit/Prometeo-aprobologia.git](https://github.com/jeffersonbejarano-bit/Prometeo-aprobologia.git) |
 | **Link de AppScript Dev:** | \[Se llena luego en la ejecución\] |
 | **Link de AppScript Prod:** | \[Se llena luego en la ejecución\] |
 
