@@ -3,22 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ticketbot — Google Chat (Simulación)</title>
+  <title>Tu Agente de IDM — Simulación Google Chat</title>
   <style>
-    :root {
-      --bg: #f0f2f5;
-      --header: #1a73e8;
-      --bot-bubble: #ffffff;
-      --user-bubble: #d2e3fc;
-      --text: #202124;
-      --muted: #5f6368;
-      --border: #dadce0;
-      --btn: #1a73e8;
-      --btn-hover: #1557b0;
-      --danger: #d93025;
-    }
-
-    * {
+    *,
+    *::before,
+    *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
@@ -26,44 +15,46 @@
 
     body {
       font-family: "Google Sans", "Segoe UI", Roboto, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      height: 100vh;
+      background: #e8eaed;
+      min-height: 100vh;
       display: flex;
+      align-items: center;
       justify-content: center;
-      align-items: stretch;
+      padding: 16px;
     }
 
-    .chat-app {
+    .chat-window {
       width: 100%;
       max-width: 720px;
-      height: 100vh;
+      height: 90vh;
+      max-height: 820px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(60, 64, 67, 0.2);
       display: flex;
       flex-direction: column;
-      background: #e8eaed;
-      box-shadow: 0 0 24px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
     }
 
     .chat-header {
-      background: var(--header);
-      color: #fff;
-      padding: 14px 18px;
       display: flex;
       align-items: center;
       gap: 12px;
-      flex-shrink: 0;
+      padding: 14px 18px;
+      border-bottom: 1px solid #e0e0e0;
+      background: #fff;
     }
 
-    .avatar {
+    .bot-avatar {
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      background: #fff;
-      color: var(--header);
+      background: #1a73e8;
+      color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 700;
+      font-weight: 600;
       font-size: 14px;
       flex-shrink: 0;
     }
@@ -71,223 +62,250 @@
     .header-info h1 {
       font-size: 16px;
       font-weight: 600;
+      color: #202124;
     }
 
     .header-info p {
       font-size: 12px;
-      opacity: 0.9;
+      color: #5f6368;
+      margin-top: 2px;
     }
 
-    .messages {
+    .chat-messages {
       flex: 1;
       overflow-y: auto;
       padding: 20px 16px;
+      background: #f8f9fa;
       display: flex;
       flex-direction: column;
       gap: 12px;
     }
 
-    .row {
+    .message-row {
       display: flex;
       flex-direction: column;
       max-width: 85%;
     }
 
-    .row.bot {
-      align-self: flex-start;
-    }
-
-    .row.user {
+    .message-row.user {
       align-self: flex-end;
       align-items: flex-end;
     }
 
-    .bubble {
+    .message-row.bot {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+
+    .message-bubble {
       padding: 10px 14px;
       border-radius: 16px;
       font-size: 14px;
-      line-height: 1.45;
+      line-height: 1.5;
       white-space: pre-wrap;
       word-break: break-word;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
     }
 
-    .row.bot .bubble {
-      background: var(--bot-bubble);
-      border-bottom-left-radius: 4px;
-    }
-
-    .row.user .bubble {
-      background: var(--user-bubble);
+    .message-row.user .message-bubble {
+      background: #1a73e8;
+      color: #fff;
       border-bottom-right-radius: 4px;
     }
 
-    .meta {
+    .message-row.bot .message-bubble {
+      background: #fff;
+      color: #202124;
+      border: 1px solid #dadce0;
+      border-bottom-left-radius: 4px;
+    }
+
+    .message-meta {
       font-size: 11px;
-      color: var(--muted);
+      color: #80868b;
       margin-top: 4px;
       padding: 0 4px;
     }
 
-    .actions {
+    .action-buttons {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-top: 10px;
+      margin-top: 8px;
     }
 
-    .actions button {
-      border: none;
-      border-radius: 20px;
-      padding: 8px 14px;
+    .action-buttons button {
+      border: 1px solid #dadce0;
+      background: #fff;
+      color: #1a73e8;
       font-size: 13px;
       font-weight: 500;
+      padding: 8px 14px;
+      border-radius: 20px;
       cursor: pointer;
-      background: var(--btn);
-      color: #fff;
-      transition: background 0.15s ease;
+      transition: background 0.15s, box-shadow 0.15s;
     }
 
-    .actions button:hover:not(:disabled) {
-      background: var(--btn-hover);
+    .action-buttons button:hover {
+      background: #e8f0fe;
+      box-shadow: 0 1px 2px rgba(60, 64, 67, 0.15);
     }
 
-    .actions button:disabled {
-      opacity: 0.55;
+    .action-buttons button:disabled {
+      opacity: 0.5;
       cursor: not-allowed;
     }
 
-    .actions button.secondary {
-      background: #fff;
-      color: var(--btn);
-      border: 1px solid var(--btn);
-    }
-
-    .actions button.secondary:hover:not(:disabled) {
-      background: #e8f0fe;
-    }
-
-    .composer {
-      background: #fff;
-      border-top: 1px solid var(--border);
-      padding: 12px 14px;
+    .chat-input-bar {
       display: flex;
+      align-items: center;
       gap: 10px;
-      flex-shrink: 0;
+      padding: 12px 16px;
+      border-top: 1px solid #e0e0e0;
+      background: #fff;
     }
 
-    .composer input {
+    .chat-input-bar input {
       flex: 1;
-      border: 1px solid var(--border);
+      border: 1px solid #dadce0;
       border-radius: 24px;
-      padding: 12px 16px;
+      padding: 12px 18px;
       font-size: 14px;
       outline: none;
+      color: #202124;
     }
 
-    .composer input:focus {
-      border-color: var(--header);
-      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+    .chat-input-bar input:focus {
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 1px #1a73e8;
     }
 
-    .composer button {
+    .chat-input-bar button {
+      width: 42px;
+      height: 42px;
       border: none;
-      background: var(--header);
+      border-radius: 50%;
+      background: #1a73e8;
       color: #fff;
-      border-radius: 24px;
-      padding: 0 20px;
-      font-size: 14px;
-      font-weight: 600;
+      font-size: 18px;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s;
     }
 
-    .composer button:hover:not(:disabled) {
-      background: var(--btn-hover);
+    .chat-input-bar button:hover {
+      background: #1557b0;
     }
 
-    .composer button:disabled {
-      opacity: 0.6;
+    .chat-input-bar button:disabled {
+      background: #aecbfa;
       cursor: not-allowed;
     }
 
-    .status-badge {
-      display: inline-block;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-    }
-
-    .status-badge.completed { color: #188038; }
-    .status-badge.in-progress { color: #e37400; }
-    .status-badge.rejected { color: var(--danger); }
+    .status-completed { color: #137333; font-weight: 600; }
+    .status-progress { color: #e37400; font-weight: 600; }
+    .status-rejected { color: #c5221f; font-weight: 600; }
   </style>
 </head>
 <body>
-  <div class="chat-app">
+  <div class="chat-window">
     <header class="chat-header">
-      <div class="avatar">TB</div>
+      <div class="bot-avatar">TB</div>
       <div class="header-info">
         <h1>Ticketbot</h1>
-        <p>Simulación Google Chat · Consulta de NID</p>
+        <p>Simulación · Consulta de NID · Google Chat</p>
       </div>
     </header>
 
-    <main id="messages" class="messages" aria-live="polite"></main>
+    <div class="chat-messages" id="messages"></div>
 
-    <form id="composer" class="composer">
+    <form class="chat-input-bar" id="chatForm">
       <input
-        id="nidInput"
         type="text"
-        placeholder="Escribe tu NID y pulsa Enviar..."
+        id="nidInput"
+        placeholder="Escribe un NID (ej: NID-12345)..."
         autocomplete="off"
         required
       />
-      <button type="submit" id="sendBtn">Enviar</button>
+      <button type="submit" id="sendBtn" title="Enviar">➤</button>
     </form>
   </div>
 
   <script>
     const messagesEl = document.getElementById('messages');
-    const composer = document.getElementById('composer');
+    const chatForm = document.getElementById('chatForm');
     const nidInput = document.getElementById('nidInput');
     const sendBtn = document.getElementById('sendBtn');
 
-    let lastNid = '';
-    let busy = false;
+    // Mensaje de bienvenida al cargar
+    addBotMessage(
+      '¡Hola! Soy tu agente de IDM.\nEscribe un NID y consultaré el orquestador para decirte su estado.'
+    );
 
-    function nowLabel() {
-      return new Date().toLocaleTimeString('es-ES', {
+    chatForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const nid = nidInput.value.trim();
+      if (!nid) return;
+
+      addUserMessage(nid);
+      nidInput.value = '';
+      await consultNid(nid);
+    });
+
+    function nowTime() {
+      return new Date().toLocaleTimeString('es-MX', {
         hour: '2-digit',
         minute: '2-digit'
       });
     }
 
-    function scrollToBottom() {
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+    function addUserMessage(text) {
+      const row = document.createElement('div');
+      row.className = 'message-row user';
+      row.innerHTML =
+        '<div class="message-bubble"></div>' +
+        '<div class="message-meta"></div>';
+      row.querySelector('.message-bubble').textContent = text;
+      row.querySelector('.message-meta').textContent = 'Tú · ' + nowTime();
+      messagesEl.appendChild(row);
+      scrollToBottom();
     }
 
-    function appendMessage(role, text, options) {
+    function addBotMessage(text, options) {
       const row = document.createElement('div');
-      row.className = 'row ' + role;
+      row.className = 'message-row bot';
 
       const bubble = document.createElement('div');
-      bubble.className = 'bubble';
+      bubble.className = 'message-bubble';
       bubble.textContent = text;
       row.appendChild(bubble);
 
-      if (options && options.actionsHtml) {
+      if (options && options.actions) {
         const actions = document.createElement('div');
-        actions.className = 'actions';
-        actions.innerHTML = options.actionsHtml;
-        row.appendChild(actions);
+        actions.className = 'action-buttons';
 
-        if (options.onBindActions) {
-          options.onBindActions(actions);
-        }
+        options.actions.forEach(function (action) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = action.label;
+          btn.addEventListener('click', function () {
+            // Deshabilitar botones tras el clic para evitar doble acción
+            actions.querySelectorAll('button').forEach(function (b) {
+              b.disabled = true;
+            });
+            action.onClick();
+          });
+          actions.appendChild(btn);
+        });
+
+        row.appendChild(actions);
       }
 
       const meta = document.createElement('div');
-      meta.className = 'meta';
-      meta.textContent = (role === 'bot' ? 'Ticketbot' : 'Tú') + ' · ' + nowLabel();
+      meta.className = 'message-meta';
+      meta.textContent = 'Ticketbot · ' + nowTime();
       row.appendChild(meta);
 
       messagesEl.appendChild(row);
@@ -295,12 +313,23 @@
       return row;
     }
 
-    function formatBotReply(payload) {
-      const { nid, status, data } = payload;
+    function scrollToBottom() {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function setLoading(isLoading) {
+      sendBtn.disabled = isLoading;
+      nidInput.disabled = isLoading;
+    }
+
+    function formatBotResponse(payload) {
+      const nid = payload.nid;
+      const status = payload.status;
+      const data = payload.data;
 
       if (status === 'COMPLETED') {
         return (
-          'NID COMPLETED\n' +
+          'Estado: COMPLETED\n' +
           'NID: ' + nid + '\n' +
           'Fecha de ejecución: ' + data.executionDate + '\n' +
           'Comentario de aprobación: ' + data.approvalComment
@@ -309,75 +338,24 @@
 
       if (status === 'IN_PROGRESS') {
         return (
-          'NID IN_PROGRESS\n' +
+          'Estado: IN_PROGRESS\n' +
           'NID: ' + nid + '\n' +
           'Fecha de inicio: ' + data.startDate + '\n' +
           'Paso actual: ' + data.currentStep
         );
       }
 
+      // REJECTED
       return (
-        'NID REJECTED\n' +
+        'Estado: REJECTED\n' +
         'NID: ' + nid + '\n' +
         'Política: ' + data.policy + '\n' +
         'Comentario de rechazo: ' + data.rejectionComment
       );
     }
 
-    function disableActionButtons(container) {
-      const buttons = container.querySelectorAll('button');
-      buttons.forEach(function (btn) {
-        btn.disabled = true;
-      });
-    }
-
-    function bindRejectedActions(actionsEl, nid) {
-      const retryBtn = actionsEl.querySelector('[data-action="retry"]');
-      const ticketBtn = actionsEl.querySelector('[data-action="ticket"]');
-      const manualBtn = actionsEl.querySelector('[data-action="manual"]');
-
-      retryBtn.addEventListener('click', function () {
-        disableActionButtons(actionsEl);
-        appendMessage('user', 'Reintento: ' + nid);
-        consultNid(nid, true);
-      });
-
-      ticketBtn.addEventListener('click', function () {
-        disableActionButtons(actionsEl);
-        appendMessage('user', 'Ticket to area');
-        appendMessage(
-          'bot',
-          'Ticket de solución creado en el sistema. Te notificaremos al cierre.'
-        );
-      });
-
-      manualBtn.addEventListener('click', function () {
-        disableActionButtons(actionsEl);
-        appendMessage('user', 'Manual review');
-        appendMessage(
-          'bot',
-          'Ticket de validación manual creado. Te notificaremos al cierre.'
-        );
-      });
-    }
-
-    function showRejectedWithActions(payload) {
-      const text = formatBotReply(payload);
-      appendMessage('bot', text, {
-        actionsHtml:
-          '<button type="button" data-action="retry">Reintento</button>' +
-          '<button type="button" class="secondary" data-action="ticket">Ticket to area</button>' +
-          '<button type="button" class="secondary" data-action="manual">Manual review</button>',
-        onBindActions: function (actionsEl) {
-          bindRejectedActions(actionsEl, payload.nid);
-        }
-      });
-    }
-
-    async function consultNid(nid, isRetry) {
-      if (busy) return;
-      busy = true;
-      sendBtn.disabled = true;
+    async function consultNid(nid) {
+      setLoading(true);
 
       try {
         const response = await fetch('/api/nid', {
@@ -389,49 +367,54 @@
         const payload = await response.json();
 
         if (!response.ok) {
-          appendMessage(
-            'bot',
-            'Error: ' + (payload.error || 'No se pudo consultar el NID.')
-          );
+          addBotMessage('Error: ' + (payload.error || 'No se pudo consultar el NID.'));
           return;
         }
 
+        const text = formatBotResponse(payload);
+
         if (payload.status === 'REJECTED') {
-          showRejectedWithActions(payload);
+          addBotMessage(text, {
+            actions: [
+              {
+                label: 'Reintento',
+                onClick: function () {
+                  addUserMessage('Reintento: ' + nid);
+                  consultNid(nid);
+                }
+              },
+              {
+                label: 'Ticket to area',
+                onClick: function () {
+                  addUserMessage('Ticket to area');
+                  addBotMessage(
+                    'Ticket de solución creado en el sistema. Te notificaremos al cierre.'
+                  );
+                }
+              },
+              {
+                label: 'Manual review',
+                onClick: function () {
+                  addUserMessage('Manual review');
+                  addBotMessage(
+                    'Ticket de validación manual creado. Te notificaremos al cierre.'
+                  );
+                }
+              }
+            ]
+          });
         } else {
-          appendMessage('bot', formatBotReply(payload));
+          addBotMessage(text);
         }
       } catch (err) {
-        appendMessage(
-          'bot',
-          'No se pudo conectar con el orquestador. ¿Está el servidor en marcha?'
+        addBotMessage(
+          'No pude conectar con el servidor. Verifica que esté corriendo en el puerto 3000.'
         );
       } finally {
-        busy = false;
-        sendBtn.disabled = false;
-        if (!isRetry) {
-          nidInput.focus();
-        }
+        setLoading(false);
+        nidInput.focus();
       }
     }
-
-    composer.addEventListener('submit', function (event) {
-      event.preventDefault();
-      const nid = nidInput.value.trim();
-      if (!nid) return;
-
-      lastNid = nid;
-      appendMessage('user', nid);
-      nidInput.value = '';
-      consultNid(nid, false);
-    });
-
-    appendMessage(
-      'bot',
-      'Hola. Soy tu agente de IDM.\n\nEscribe un NID en la barra inferior y te consultaré el estado en el que se encuentra.
-    );
-    nidInput.focus();
   </script>
 </body>
 </html>
-

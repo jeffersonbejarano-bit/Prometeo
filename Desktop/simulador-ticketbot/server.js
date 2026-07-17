@@ -4,6 +4,7 @@ const path = require('path');
 const app = express();
 const PORT = 3000;
 
+// Los 9 procesos del SOP, en el orden exacto de evaluación
 const PROCESSES = [
   'sellers tarea de documentos',
   'idm revision de documentos',
@@ -25,30 +26,48 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-function buildStatusData(status) {
-  const now = new Date().toISOString();
+function pickRandom(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
 
+function formatDate() {
+  return new Date().toLocaleString('es-MX', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+}
+
+function buildStatusData(status) {
   if (status === 'COMPLETED') {
     return {
-      executionDate: now,
-      approvalComment: 'Aprobado automaticamente por el orquestador. Cumple politicas de liberacion.'
+      executionDate: formatDate(),
+      approvalComment: 'Aprobado automáticamente por el orquestador. Cumple políticas de liberación.'
     };
   }
 
   if (status === 'IN_PROGRESS') {
-    const stepIndex = Math.floor(Math.random() * PROCESSES.length);
     return {
-      startDate: now,
-      currentStep: PROCESSES[stepIndex]
+      startDate: formatDate(),
+      currentStep: pickRandom(PROCESSES)
     };
   }
 
+  // REJECTED
   return {
-    policy: 'POL-SEC-042: Validacion de cumplimiento obligatorio',
-    rejectionComment: 'El NID no cumple los criterios de seguridad definidos en la politica vigente.'
+    policy: 'POL-SEC-042: Validación de cumplimiento obligatorio',
+    rejectionComment: 'El NID no cumple los criterios de seguridad definidos en la política vigente.'
   };
 }
 
+/**
+ * POST /api/nid
+ * Body: { "nid": "ABC123" }
+ * Simula la consulta al orquestador y devuelve un estado aleatorio.
+ */
 app.post('/api/nid', (req, res) => {
   const { nid } = req.body || {};
 
@@ -59,7 +78,7 @@ app.post('/api/nid', (req, res) => {
   }
 
   const cleanNid = nid.trim();
-  const status = STATUSES[Math.floor(Math.random() * STATUSES.length)];
+  const status = pickRandom(STATUSES);
   const data = buildStatusData(status);
 
   return res.json({
