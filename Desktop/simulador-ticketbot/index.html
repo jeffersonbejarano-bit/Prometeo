@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ticketbot — Google Chat (Simulación)</title>
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --header: #1a73e8;
+      --bot-bubble: #ffffff;
+      --user-bubble: #d2e3fc;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #dadce0;
+      --btn: #1a73e8;
+      --btn-hover: #1557b0;
+      --danger: #d93025;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Google Sans", "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+    }
+
+    .chat-app {
+      width: 100%;
+      max-width: 720px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #e8eaed;
+      box-shadow: 0 0 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .chat-header {
+      background: var(--header);
+      color: #fff;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #fff;
+      color: var(--header);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .header-info h1 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .header-info p {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .row {
+      display: flex;
+      flex-direction: column;
+      max-width: 85%;
+    }
+
+    .row.bot {
+      align-self: flex-start;
+    }
+
+    .row.user {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .bubble {
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    }
+
+    .row.bot .bubble {
+      background: var(--bot-bubble);
+      border-bottom-left-radius: 4px;
+    }
+
+    .row.user .bubble {
+      background: var(--user-bubble);
+      border-bottom-right-radius: 4px;
+    }
+
+    .meta {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      padding: 0 4px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .actions button {
+      border: none;
+      border-radius: 20px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      background: var(--btn);
+      color: #fff;
+      transition: background 0.15s ease;
+    }
+
+    .actions button:hover:not(:disabled) {
+      background: var(--btn-hover);
+    }
+
+    .actions button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .actions button.secondary {
+      background: #fff;
+      color: var(--btn);
+      border: 1px solid var(--btn);
+    }
+
+    .actions button.secondary:hover:not(:disabled) {
+      background: #e8f0fe;
+    }
+
+    .composer {
+      background: #fff;
+      border-top: 1px solid var(--border);
+      padding: 12px 14px;
+      display: flex;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .composer input {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 12px 16px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .composer input:focus {
+      border-color: var(--header);
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+    }
+
+    .composer button {
+      border: none;
+      background: var(--header);
+      color: #fff;
+      border-radius: 24px;
+      padding: 0 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .composer button:hover:not(:disabled) {
+      background: var(--btn-hover);
+    }
+
+    .composer button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status-badge {
+      display: inline-block;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .status-badge.completed { color: #188038; }
+    .status-badge.in-progress { color: #e37400; }
+    .status-badge.rejected { color: var(--danger); }
+  </style>
+</head>
+<body>
+  <div class="chat-app">
+    <header class="chat-header">
+      <div class="avatar">TB</div>
+      <div class="header-info">
+        <h1>Ticketbot</h1>
+        <p>Simulación Google Chat · Consulta de NID</p>
+      </div>
+    </header>
+
+    <main id="messages" class="messages" aria-live="polite"></main>
+
+    <form id="composer" class="composer">
+      <input
+        id="nidInput"
+        type="text"
+        placeholder="Escribe tu NID y pulsa Enviar..."
+        autocomplete="off"
+        required
+      />
+      <button type="submit" id="sendBtn">Enviar</button>
+    </form>
+  </div>
+
+  <script>
+    const messagesEl = document.getElementById('messages');
+    const composer = document.getElementById('composer');
+    const nidInput = document.getElementById('nidInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    let lastNid = '';
+    let busy = false;
+
+    function nowLabel() {
+      return new Date().toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function scrollToBottom() {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function appendMessage(role, text, options) {
+      const row = document.createElement('div');
+      row.className = 'row ' + role;
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+      row.appendChild(bubble);
+
+      if (options && options.actionsHtml) {
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        actions.innerHTML = options.actionsHtml;
+        row.appendChild(actions);
+
+        if (options.onBindActions) {
+          options.onBindActions(actions);
+        }
+      }
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = (role === 'bot' ? 'Ticketbot' : 'Tú') + ' · ' + nowLabel();
+      row.appendChild(meta);
+
+      messagesEl.appendChild(row);
+      scrollToBottom();
+      return row;
+    }
+
+    function formatBotReply(payload) {
+      const { nid, status, data } = payload;
+
+      if (status === 'COMPLETED') {
+        return (
+          'NID COMPLETED\n' +
+          'NID: ' + nid + '\n' +
+          'Fecha de ejecución: ' + data.executionDate + '\n' +
+          'Comentario de aprobación: ' + data.approvalComment
+        );
+      }
+
+      if (status === 'IN_PROGRESS') {
+        return (
+          'NID IN_PROGRESS\n' +
+          'NID: ' + nid + '\n' +
+          'Fecha de inicio: ' + data.startDate + '\n' +
+          'Paso actual: ' + data.currentStep
+        );
+      }
+
+      return (
+        'NID REJECTED\n' +
+        'NID: ' + nid + '\n' +
+        'Política: ' + data.policy + '\n' +
+        'Comentario de rechazo: ' + data.rejectionComment
+      );
+    }
+
+    function disableActionButtons(container) {
+      const buttons = container.querySelectorAll('button');
+      buttons.forEach(function (btn) {
+        btn.disabled = true;
+      });
+    }
+
+    function bindRejectedActions(actionsEl, nid) {
+      const retryBtn = actionsEl.querySelector('[data-action="retry"]');
+      const ticketBtn = actionsEl.querySelector('[data-action="ticket"]');
+      const manualBtn = actionsEl.querySelector('[data-action="manual"]');
+
+      retryBtn.addEventListener('click', function () {
+        disableActionButtons(actionsEl);
+        appendMessage('user', 'Reintento: ' + nid);
+        consultNid(nid, true);
+      });
+
+      ticketBtn.addEventListener('click', function () {
+        disableActionButtons(actionsEl);
+        appendMessage('user', 'Ticket to area');
+        appendMessage(
+          'bot',
+          'Ticket de solución creado en el sistema. Te notificaremos al cierre.'
+        );
+      });
+
+      manualBtn.addEventListener('click', function () {
+        disableActionButtons(actionsEl);
+        appendMessage('user', 'Manual review');
+        appendMessage(
+          'bot',
+          'Ticket de validación manual creado. Te notificaremos al cierre.'
+        );
+      });
+    }
+
+    function showRejectedWithActions(payload) {
+      const text = formatBotReply(payload);
+      appendMessage('bot', text, {
+        actionsHtml:
+          '<button type="button" data-action="retry">Reintento</button>' +
+          '<button type="button" class="secondary" data-action="ticket">Ticket to area</button>' +
+          '<button type="button" class="secondary" data-action="manual">Manual review</button>',
+        onBindActions: function (actionsEl) {
+          bindRejectedActions(actionsEl, payload.nid);
+        }
+      });
+    }
+
+    async function consultNid(nid, isRetry) {
+      if (busy) return;
+      busy = true;
+      sendBtn.disabled = true;
+
+      try {
+        const response = await fetch('/api/nid', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nid: nid })
+        });
+
+        const payload = await response.json();
+
+        if (!response.ok) {
+          appendMessage(
+            'bot',
+            'Error: ' + (payload.error || 'No se pudo consultar el NID.')
+          );
+          return;
+        }
+
+        if (payload.status === 'REJECTED') {
+          showRejectedWithActions(payload);
+        } else {
+          appendMessage('bot', formatBotReply(payload));
+        }
+      } catch (err) {
+        appendMessage(
+          'bot',
+          'No se pudo conectar con el orquestador. ¿Está el servidor en marcha?'
+        );
+      } finally {
+        busy = false;
+        sendBtn.disabled = false;
+        if (!isRetry) {
+          nidInput.focus();
+        }
+      }
+    }
+
+    composer.addEventListener('submit', function (event) {
+      event.preventDefault();
+      const nid = nidInput.value.trim();
+      if (!nid) return;
+
+      lastNid = nid;
+      appendMessage('user', nid);
+      nidInput.value = '';
+      consultNid(nid, false);
+    });
+
+    appendMessage(
+      'bot',
+      'Hola. Soy tu agente de IDM.\n\nEscribe un NID en la barra inferior y te consultaré el estado en el que se encuentra.
+    );
+    nidInput.focus();
+  </script>
+</body>
+</html>
+
