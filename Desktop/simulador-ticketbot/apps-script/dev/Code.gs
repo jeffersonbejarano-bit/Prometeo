@@ -4,7 +4,7 @@
  * Flujo Lucidchart:
  * Start → Recibe NID → Revisar 9 procesos → COMPLETED | IN_PROGRESS | REJECTED
  * COMPLETED / IN_PROGRESS → presentar info → End
- * REJECTED → Reintento | Ticket to area | Manual review (gate)
+ * REJECTED → Ticket to area | Manual review
  */
 
 /**
@@ -14,7 +14,6 @@
  */
 function onMessage(event) {
   var text = ((event && event.message && event.message.text) || '').trim();
-  var userKey = getUserKey_(event);
 
   if (!text) {
     return textResponse_(
@@ -36,7 +35,7 @@ function onMessage(event) {
     );
   }
 
-  return handleNidConsultation_(text, userKey);
+  return handleNidConsultation_(text);
 }
 
 /**
@@ -48,7 +47,6 @@ function onCardClick(event) {
   var action = event && event.action ? event.action : {};
   var params = action.parameters || [];
   var map = paramsToMap_(params);
-  var userKey = getUserKey_(event);
   var nid = map.nid || '';
   var actionName = action.actionMethodName || map.action || '';
 
@@ -56,40 +54,24 @@ function onCardClick(event) {
     return textResponse_('No pude identificar el NID de la acción.');
   }
 
-  var session = getSession_(userKey, nid);
-
-  if (actionName === 'retry') {
-    session.retryTried = true;
-    saveSession_(userKey, nid, session);
-    return handleNidConsultation_(nid, userKey);
-  }
-
   if (actionName === 'ticket_area') {
-    session.ticketTried = true;
-    saveSession_(userKey, nid, session);
     return handleTicketFlow_(nid, 'solution', map.area || 'Área responsable');
   }
 
   if (actionName === 'manual_review') {
-    if (!(session.retryTried && session.ticketTried)) {
-      return textResponse_(
-        'Manual review solo está disponible si Reintento y Ticket to area no funcionaron.'
-      );
-    }
     return handleTicketFlow_(nid, 'manual', map.area || 'Área responsable');
   }
 
   return textResponse_('Acción no reconocida.');
 }
 
-function handleNidConsultation_(nid, userKey) {
+function handleNidConsultation_(nid) {
   try {
     var payload = consultNid(nid);
     var messageText = formatStatusMessage_(payload);
 
     if (payload.status === 'REJECTED') {
-      var session = getSession_(userKey, nid);
-      return cardWithRejectedActions_(messageText, payload, session);
+      return cardWithRejectedActions_(messageText, payload);
     }
 
     // COMPLETED e IN_PROGRESS terminan en End (sin botones)
@@ -162,68 +144,9 @@ function formatStatusMessage_(payload) {
   );
 }
 
-function cardWithRejectedActions_(messageText, payload, session) {
+function cardWithRejectedActions_(messageText, payload) {
   var nid = payload.nid;
   var area = (payload.data && payload.data.area) || 'Área responsable';
-  var canManual = !!(session.retryTried && session.ticketTried);
-
-  var widgets = [
-    { textParagraph: { text: messageText.replace(/\n/g, '<br>') } },
-    {
-      buttonList: {
-        buttons: [
-          {
-            text: 'Reintento',
-            onClick: {
-              action: {
-                actionMethodName: 'retry',
-                parameters: [
-                  { key: 'nid', value: nid },
-                  { key: 'action', value: 'retry' }
-                ]
-              }
-            }
-          },
-          {
-            text: 'Ticket to area',
-            onClick: {
-              action: {
-                actionMethodName: 'ticket_area',
-                parameters: [
-                  { key: 'nid', value: nid },
-                  { key: 'area', value: area },
-                  { key: 'action', value: 'ticket_area' }
-                ]
-              }
-            }
-          },
-          {
-            text: canManual ? 'Manual review' : 'Manual review (bloqueado)',
-            disabled: !canManual,
-            onClick: {
-              action: {
-                actionMethodName: 'manual_review',
-                parameters: [
-                  { key: 'nid', value: nid },
-                  { key: 'area', value: area },
-                  { key: 'action', value: 'manual_review' }
-                ]
-              }
-            }
-          }
-        ]
-      }
-    }
-  ];
-
-  if (!canManual) {
-    widgets.push({
-      textParagraph: {
-        text:
-          '<i>Manual review se habilita solo si Reintento y Ticket to area no funcionaron.</i>'
-      }
-    });
-  }
 
   return {
     cardsV2: [
@@ -234,7 +157,45 @@ function cardWithRejectedActions_(messageText, payload, session) {
             title: CONFIG.BOT_NAME,
             subtitle: 'NID REJECTED · ' + CONFIG.ENV
           },
-          sections: [{ widgets: widgets }]
+          sections: [
+            {
+              widgets: [
+                { textParagraph: { text: messageText.replace(/\n/g, '<br>') } },
+                {
+                  buttonList: {
+                    buttons: [
+                      {
+                        text: 'Ticket to area',
+                        onClick: {
+                          action: {
+                            actionMethodName: 'ticket_area',
+                            parameters: [
+                              { key: 'nid', value: nid },
+                              { key: 'area', value: area },
+                              { key: 'action', value: 'ticket_area' }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        text: 'Manual review',
+                        onClick: {
+                          action: {
+                            actionMethodName: 'manual_review',
+                            parameters: [
+                              { key: 'nid', value: nid },
+                              { key: 'area', value: area },
+                              { key: 'action', value: 'manual_review' }
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
         }
       }
     ]
@@ -243,11 +204,6 @@ function cardWithRejectedActions_(messageText, payload, session) {
 
 function textResponse_(text) {
   return { text: text };
-}
-
-function getUserKey_(event) {
-  var user = (event && event.user) || {};
-  return user.name || user.email || user.displayName || 'anonymous';
 }
 
 function paramsToMap_(params) {

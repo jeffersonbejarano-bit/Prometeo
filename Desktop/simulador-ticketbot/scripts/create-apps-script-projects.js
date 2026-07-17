@@ -9,6 +9,9 @@
  *   npx clasp login
  *   node scripts\create-apps-script-projects.js
  *
+ * Alternativa:
+ *   npm run clasp:create
+ *
  * Requisitos previos:
  *   - Activar Apps Script API:
  *     https://script.google.com/home/usersettings
@@ -16,6 +19,7 @@
 
 const { spawnSync, execFileSync } = require('child_process');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -49,6 +53,13 @@ const SOURCE_FILES = [
   'Orchestrator.gs',
   'Ticketing.gs'
 ];
+
+const CLASPIGNORE = [
+  '# Generado por create-apps-script-projects.js',
+  '.backup/**',
+  'SCRIPT_URL.txt',
+  '**/.DS_Store'
+].join('\n') + '\n';
 
 function log(msg) {
   console.log(msg);
@@ -90,6 +101,13 @@ function ensureNpmInstalled() {
     stdio: 'inherit',
     shell: true
   });
+  if (!fs.existsSync(CLASP_ENTRY)) {
+    fail(
+      'Tras npm install no aparece clasp en:\n  ' +
+        CLASP_ENTRY +
+        '\nRevisa package.json (devDependency @google/clasp).'
+    );
+  }
 }
 
 function ensureLoggedIn() {
@@ -120,19 +138,56 @@ function ensureLoggedIn() {
   log('Sesión clasp: OK');
 }
 
-function readScriptId(projectDir) {
+function readClaspConfig(projectDir) {
   const claspPath = path.join(projectDir, '.clasp.json');
   if (!fs.existsSync(claspPath)) return null;
   try {
-    const data = JSON.parse(fs.readFileSync(claspPath, 'utf8'));
-    return data.scriptId || null;
+    return JSON.parse(fs.readFileSync(claspPath, 'utf8'));
   } catch (e) {
     return null;
   }
 }
 
-function backupSources(projectDir) {
-  const backupDir = path.join(projectDir, '.backup');
+function readScriptId(projectDir) {
+  const data = readClaspConfig(projectDir);
+  return data && data.scriptId ? data.scriptId : null;
+}
+
+/**
+ * Evita que clasp suba duplicados desde subcarpetas (.backup, etc.).
+ */
+function normalizeClaspConfig(projectDir) {
+  const claspPath = path.join(projectDir, '.clasp.json');
+  const data = readClaspConfig(projectDir);
+  if (!data || !data.scriptId) return;
+
+  data.rootDir = data.rootDir || '.';
+  data.skipSubdirectories = true;
+  if (!Array.isArray(data.scriptExtensions)) {
+    data.scriptExtensions = ['.gs', '.js'];
+  }
+  if (!Array.isArray(data.jsonExtensions)) {
+    data.jsonExtensions = ['.json'];
+  }
+
+  fs.writeFileSync(claspPath, JSON.stringify(data, null, 2) + '\n', 'utf8');
+}
+
+function ensureClaspIgnore(projectDir) {
+  fs.writeFileSync(path.join(projectDir, '.claspignore'), CLASPIGNORE, 'utf8');
+}
+
+/**
+ * Backup FUERA del rootDir de clasp (temp del SO).
+ * Tener .backup/ dentro del proyecto hace que clasp intente subir
+ * dos appsscript.json → error "A file with this name already exists: appsscript".
+ */
+function backupSources(projectDir, env) {
+  const backupDir = path.join(
+    os.tmpdir(),
+    'prometeo-clasp-backup',
+    env + '-' + Date.now()
+  );
   fs.mkdirSync(backupDir, { recursive: true });
   for (const file of SOURCE_FILES) {
     const src = path.join(projectDir, file);
@@ -145,9 +200,34 @@ function backupSources(projectDir) {
 
 function restoreSources(backupDir, projectDir) {
   if (!fs.existsSync(backupDir)) return;
-  for (const file of fs.readdirSync(backupDir)) {
-    fs.copyFileSync(path.join(backupDir, file), path.join(projectDir, file));
+  for (const file of SOURCE_FILES) {
+    const src = path.join(backupDir, file);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, path.join(projectDir, file));
+    }
   }
+}
+
+function removeDirSafe(dirPath) {
+  if (!fs.existsSync(dirPath)) return;
+  fs.rmSync(dirPath, { recursive: true, force: true });
+}
+
+/**
+ * Limpia restos locales que provocarían el conflicto de appsscript.
+ */
+function sanitizeProjectDir(projectDir) {
+  removeDirSafe(path.join(projectDir, '.backup'));
+
+  // clasp a veces deja stubs con otras extensiones
+  const stray = ['Code.js', 'appsscript.json.bak'];
+  for (const file of stray) {
+    const p = path.join(projectDir, file);
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+  }
+
+  ensureClaspIgnore(projectDir);
+  normalizeClaspConfig(projectDir);
 }
 
 function validateProjectDir(projectDir, env) {
@@ -177,21 +257,27 @@ function createAndPush(project) {
   validateProjectDir(dir, env);
 
   let scriptId = readScriptId(dir);
+  let backupDir = null;
 
   if (scriptId) {
     log('Proyecto ya existe (scriptId: ' + scriptId + '). Solo se sube código.');
   } else {
     log('Creando proyecto en Google Apps Script...');
-    const backupDir = backupSources(dir);
+    backupDir = backupSources(dir, env);
 
     const createOut = runClasp(
-      ['create-script', '--title', title, '--type', 'standalone', '--rootDir', '.'],
+      [
+        'create-script',
+        '--title',
+        title,
+        '--type',
+        'standalone',
+        '--rootDir',
+        '.'
+      ],
       dir
     );
     if (createOut) log(createOut);
-
-    // clasp puede regenerar stubs; restauramos nuestro código
-    restoreSources(backupDir, dir);
 
     scriptId = readScriptId(dir);
     if (!scriptId) {
@@ -202,6 +288,28 @@ function createAndPush(project) {
           'https://script.google.com/home/usersettings'
       );
     }
+
+    // Sincroniza el manifiesto remoto (appsscript) antes de sobrescribir local
+    log('Sincronizando proyecto remoto (clasp pull)...');
+    try {
+      const pullOut = runClasp(['pull', '--force'], dir);
+      if (pullOut) log(pullOut);
+    } catch (err) {
+      log('Aviso: clasp pull falló (se continúa con restore local): ' + err.message);
+    }
+
+    // Restaura nuestro código/manifesto por encima de los stubs de clasp
+    restoreSources(backupDir, dir);
+  }
+
+  sanitizeProjectDir(dir);
+
+  // Asegura que el manifiesto local es el nuestro (no el stub de create/pull)
+  if (backupDir) {
+    restoreSources(backupDir, dir);
+    removeDirSafe(backupDir);
+  } else {
+    // Re-run: no tocamos fuentes; solo push limpio
   }
 
   log('Subiendo código con clasp push...');

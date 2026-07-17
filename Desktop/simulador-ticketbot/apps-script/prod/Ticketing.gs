@@ -60,25 +60,3 @@ function closeTicket(ticketId) {
   props.setProperty('ticket_' + ticketId, JSON.stringify(ticket));
   return ticket;
 }
-
-/**
- * Estado de sesión por usuario+NID para gate de Manual review.
- * Manual review solo si reintento Y ticket no funcionaron (Lucidchart).
- */
-function getSessionKey_(userKey, nid) {
-  return 'session_' + userKey + '_' + nid;
-}
-
-function getSession_(userKey, nid) {
-  var props = PropertiesService.getUserProperties();
-  var raw = props.getProperty(getSessionKey_(userKey, nid));
-  if (!raw) {
-    return { retryTried: false, ticketTried: false };
-  }
-  return JSON.parse(raw);
-}
-
-function saveSession_(userKey, nid, session) {
-  var props = PropertiesService.getUserProperties();
-  props.setProperty(getSessionKey_(userKey, nid), JSON.stringify(session));
-}

@@ -233,24 +233,12 @@
      * Flujo Lucidchart (lanes: Chatbot / Orquestador / Ticketing):
      * Start → Recibe NID → Revisar 9 procesos → COMPLETED | IN_PROGRESS | REJECTED
      * COMPLETED / IN_PROGRESS → presentar info → End
-     * REJECTED → opciones → Reintento (vuelve a orquestador)
-     *            → Ticket a área → crear ticket → mantener → notificar cierre → End
-     *            → Revisión manual (solo si reintento Y ticket no funcionaron)
+     * REJECTED → Ticket to area | Manual review (ambos habilitados)
      */
     const messagesEl = document.getElementById('messages');
     const chatForm = document.getElementById('chatForm');
     const nidInput = document.getElementById('nidInput');
     const sendBtn = document.getElementById('sendBtn');
-
-    // Estado de sesión por NID (para gate de Manual review)
-    const sessionByNid = {};
-
-    function getSession(nid) {
-      if (!sessionByNid[nid]) {
-        sessionByNid[nid] = { retryTried: false, ticketTried: false };
-      }
-      return sessionByNid[nid];
-    }
 
     addBotMessage(
       'Hola. Soy tu agente de IDM.\n\nEscribe un NID para consultar su estado en el orquestador.'
@@ -349,7 +337,7 @@
 
       if (payload.status === 'COMPLETED') {
         return (
-          'NID COMPLETED\n' +
+          'Estado: COMPLETED\n' +
           'NID: ' + nid + '\n' +
           'Fecha de ejecución: ' + data.executionDate + '\n' +
           'Comentario de aprobación: ' + data.approvalComment
@@ -358,7 +346,7 @@
 
       if (payload.status === 'IN_PROGRESS') {
         var msg =
-          'NID IN_PROGRESS\n' +
+          'Estado: IN_PROGRESS\n' +
           'NID: ' + nid + '\n' +
           'Fecha/hora de inicio: ' + data.startDate;
 
@@ -370,7 +358,7 @@
       }
 
       return (
-        'NID REJECTED\n' +
+        'Estado: REJECTED\n' +
         'NID: ' + nid + '\n' +
         'Política: ' + data.policy + '\n' +
         'Comentario: ' + data.rejectionComment
@@ -378,37 +366,22 @@
     }
 
     /**
-     * REJECTED: Reintento / Ticket to area / Manual review
-     * Manual review solo si reintento Y ticket no funcionaron (Lucidchart).
+     * REJECTED: Ticket to area / Manual review (ambos habilitados).
      */
     function buildRejectedActions(payload) {
       const nid = payload.nid;
       const area = (payload.data && payload.data.area) || 'Área responsable';
-      const session = getSession(nid);
-      const canManual = session.retryTried && session.ticketTried;
 
       return [
         {
-          label: 'Reintento',
-          onClick: async function () {
-            session.retryTried = true;
-            addUserMessage('Reintento: ' + nid);
-            await consultNid(nid);
-          }
-        },
-        {
           label: 'Ticket to area',
           onClick: async function () {
-            session.ticketTried = true;
             addUserMessage('Ticket to area');
             await createAndWatchTicket(nid, 'solution', area);
           }
         },
         {
           label: 'Manual review',
-          disabled: !canManual,
-          disabledReason:
-            'Disponible solo si Reintento y Ticket to area no funcionaron.',
           onClick: async function () {
             addUserMessage('Manual review');
             await createAndWatchTicket(nid, 'manual', area);

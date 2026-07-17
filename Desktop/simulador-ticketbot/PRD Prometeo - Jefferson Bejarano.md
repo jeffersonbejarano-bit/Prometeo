@@ -6,8 +6,8 @@
 | :---- | :---- |
 | **Stakeholders** | [Gustavo Armando Vallejo Ruiz](mailto:gustavovallejo@habi.co), [Angel Gomez Reyes](mailto:angelgomez@habi.co), [Sandra Liliana Soto Calderon](mailto:lilianasoto@habi.co) |
 | **Link de Repo en Github:**  | [https://github.com/jeffersonbejarano-bit/Prometeo.git](https://github.com/jeffersonbejarano-bit/Prometeo.git) |
-| **Link de AppScript Dev:** | Pendiente de `npm run clasp:create` → carpeta `apps-script/dev` (Prometeo Aprobologia DEV) |
-| **Link de AppScript Prod:** | Pendiente de `npm run clasp:create` → carpeta `apps-script/prod` (Prometeo Aprobologia PROD) |
+| **Link de AppScript Dev:** | [https://script.google.com/d/1KMEvmNVlNAtMjMkF9Ts2T7LgLaAWjZWAJtLKs_okgrGRpsrb7CLSPL0_/edit](https://script.google.com/d/1KMEvmNVlNAtMjMkF9Ts2T7LgLaAWjZWAJtLKs_okgrGRpsrb7CLSPL0_/edit) |
+| **Link de AppScript Prod:** | [https://script.google.com/d/1qeabqsrKFS470zJuXumVGNFznlSSMjZSgXIUowSi0Mll7cXMlYCK3pwe/edit](https://script.google.com/d/1qeabqsrKFS470zJuXumVGNFznlSSMjZSgXIUowSi0Mll7cXMlYCK3pwe/edit) |
 
 ## **I. PRD (Product Requirement Document)**
 

@@ -12,13 +12,19 @@ Proyectos Google Chat Bot alineados al Lucidchart (consulta y gestión de NID).
 1. Abre y activa la API de Apps Script:  
    https://script.google.com/home/usersettings
 
-2. En la terminal, desde la carpeta del simulador:
+2. En la terminal (PowerShell), desde la carpeta del simulador:
 
-```bash
-cd Desktop/simulador-ticketbot
+```powershell
+cd $HOME\Desktop\simulador-ticketbot
 npm install
 npx clasp login
-bash scripts/create-apps-script-projects.sh
+node scripts\create-apps-script-projects.js
+```
+
+O con npm:
+
+```powershell
+npm run clasp:create
 ```
 
 3. El script imprime los links Dev y Prod. Pégalos en el PRD.
