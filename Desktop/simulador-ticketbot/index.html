@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tu Agente de IDM — Simulación Google Chat</title>
+  <title>Prometeo — Consulta y Gestión de NID</title>
   <style>
     *,
     *::before,
@@ -55,7 +55,7 @@
       align-items: center;
       justify-content: center;
       font-weight: 600;
-      font-size: 14px;
+      font-size: 13px;
       flex-shrink: 0;
     }
 
@@ -145,13 +145,13 @@
       transition: background 0.15s, box-shadow 0.15s;
     }
 
-    .action-buttons button:hover {
+    .action-buttons button:hover:not(:disabled) {
       background: #e8f0fe;
       box-shadow: 0 1px 2px rgba(60, 64, 67, 0.15);
     }
 
     .action-buttons button:disabled {
-      opacity: 0.5;
+      opacity: 0.45;
       cursor: not-allowed;
     }
 
@@ -192,7 +192,6 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      transition: background 0.15s;
     }
 
     .chat-input-bar button:hover {
@@ -203,19 +202,15 @@
       background: #aecbfa;
       cursor: not-allowed;
     }
-
-    .status-completed { color: #137333; font-weight: 600; }
-    .status-progress { color: #e37400; font-weight: 600; }
-    .status-rejected { color: #c5221f; font-weight: 600; }
   </style>
 </head>
 <body>
   <div class="chat-window">
     <header class="chat-header">
-      <div class="bot-avatar">TB</div>
+      <div class="bot-avatar">IDM</div>
       <div class="header-info">
-        <h1>Ticketbot</h1>
-        <p>Simulación · Consulta de NID · Google Chat</p>
+        <h1>Agente IDM · Prometeo</h1>
+        <p>Consulta y Gestión de NID · Simulación Google Chat</p>
       </div>
     </header>
 
@@ -234,17 +229,34 @@
   </div>
 
   <script>
+    /**
+     * Flujo Lucidchart (lanes: Chatbot / Orquestador / Ticketing):
+     * Start → Recibe NID → Revisar 9 procesos → COMPLETED | IN_PROGRESS | REJECTED
+     * COMPLETED / IN_PROGRESS → presentar info → End
+     * REJECTED → opciones → Reintento (vuelve a orquestador)
+     *            → Ticket a área → crear ticket → mantener → notificar cierre → End
+     *            → Revisión manual (solo si reintento Y ticket no funcionaron)
+     */
     const messagesEl = document.getElementById('messages');
     const chatForm = document.getElementById('chatForm');
     const nidInput = document.getElementById('nidInput');
     const sendBtn = document.getElementById('sendBtn');
 
-    // Mensaje de bienvenida al cargar
+    // Estado de sesión por NID (para gate de Manual review)
+    const sessionByNid = {};
+
+    function getSession(nid) {
+      if (!sessionByNid[nid]) {
+        sessionByNid[nid] = { retryTried: false, ticketTried: false };
+      }
+      return sessionByNid[nid];
+    }
+
     addBotMessage(
-      '¡Hola! Soy tu agente de IDM.\nEscribe un NID y consultaré el orquestador para decirte su estado.'
+      'Hola. Soy tu agente de IDM.\n\nEscribe un NID para consultar su estado en el orquestador.'
     );
 
-    chatForm.addEventListener('submit', async (event) => {
+    chatForm.addEventListener('submit', async function (event) {
       event.preventDefault();
       const nid = nidInput.value.trim();
       if (!nid) return;
@@ -261,58 +273,6 @@
       });
     }
 
-    function addUserMessage(text) {
-      const row = document.createElement('div');
-      row.className = 'message-row user';
-      row.innerHTML =
-        '<div class="message-bubble"></div>' +
-        '<div class="message-meta"></div>';
-      row.querySelector('.message-bubble').textContent = text;
-      row.querySelector('.message-meta').textContent = 'Tú · ' + nowTime();
-      messagesEl.appendChild(row);
-      scrollToBottom();
-    }
-
-    function addBotMessage(text, options) {
-      const row = document.createElement('div');
-      row.className = 'message-row bot';
-
-      const bubble = document.createElement('div');
-      bubble.className = 'message-bubble';
-      bubble.textContent = text;
-      row.appendChild(bubble);
-
-      if (options && options.actions) {
-        const actions = document.createElement('div');
-        actions.className = 'action-buttons';
-
-        options.actions.forEach(function (action) {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.textContent = action.label;
-          btn.addEventListener('click', function () {
-            // Deshabilitar botones tras el clic para evitar doble acción
-            actions.querySelectorAll('button').forEach(function (b) {
-              b.disabled = true;
-            });
-            action.onClick();
-          });
-          actions.appendChild(btn);
-        });
-
-        row.appendChild(actions);
-      }
-
-      const meta = document.createElement('div');
-      meta.className = 'message-meta';
-      meta.textContent = 'Ticketbot · ' + nowTime();
-      row.appendChild(meta);
-
-      messagesEl.appendChild(row);
-      scrollToBottom();
-      return row;
-    }
-
     function scrollToBottom() {
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
@@ -322,36 +282,194 @@
       nidInput.disabled = isLoading;
     }
 
+    function addUserMessage(text) {
+      const row = document.createElement('div');
+      row.className = 'message-row user';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'message-bubble';
+      bubble.textContent = text;
+      row.appendChild(bubble);
+
+      const meta = document.createElement('div');
+      meta.className = 'message-meta';
+      meta.textContent = 'Tú · ' + nowTime();
+      row.appendChild(meta);
+
+      messagesEl.appendChild(row);
+      scrollToBottom();
+    }
+
+    function addBotMessage(text, actions) {
+      const row = document.createElement('div');
+      row.className = 'message-row bot';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'message-bubble';
+      bubble.textContent = text;
+      row.appendChild(bubble);
+
+      if (actions && actions.length) {
+        const actionsEl = document.createElement('div');
+        actionsEl.className = 'action-buttons';
+
+        actions.forEach(function (action) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = action.label;
+          if (action.disabled) {
+            btn.disabled = true;
+            btn.title = action.disabledReason || '';
+          }
+          btn.addEventListener('click', function () {
+            if (btn.disabled) return;
+            actionsEl.querySelectorAll('button').forEach(function (b) {
+              b.disabled = true;
+            });
+            action.onClick();
+          });
+          actionsEl.appendChild(btn);
+        });
+
+        row.appendChild(actionsEl);
+      }
+
+      const meta = document.createElement('div');
+      meta.className = 'message-meta';
+      meta.textContent = 'Agente IDM · ' + nowTime();
+      row.appendChild(meta);
+
+      messagesEl.appendChild(row);
+      scrollToBottom();
+    }
+
     function formatBotResponse(payload) {
       const nid = payload.nid;
-      const status = payload.status;
       const data = payload.data;
 
-      if (status === 'COMPLETED') {
+      if (payload.status === 'COMPLETED') {
         return (
-          'Estado: COMPLETED\n' +
+          'NID COMPLETED\n' +
           'NID: ' + nid + '\n' +
           'Fecha de ejecución: ' + data.executionDate + '\n' +
           'Comentario de aprobación: ' + data.approvalComment
         );
       }
 
-      if (status === 'IN_PROGRESS') {
-        return (
-          'Estado: IN_PROGRESS\n' +
+      if (payload.status === 'IN_PROGRESS') {
+        var msg =
+          'NID IN_PROGRESS\n' +
           'NID: ' + nid + '\n' +
-          'Fecha de inicio: ' + data.startDate + '\n' +
-          'Paso actual: ' + data.currentStep
-        );
+          'Fecha/hora de inicio: ' + data.startDate;
+
+        // Lucidchart: si es tarea de aprobación → mostrar orden/paso actual
+        if (data.isApprovalTask && data.currentStep) {
+          msg += '\nPaso actual: ' + data.currentStep;
+        }
+        return msg;
       }
 
-      // REJECTED
       return (
-        'Estado: REJECTED\n' +
+        'NID REJECTED\n' +
         'NID: ' + nid + '\n' +
         'Política: ' + data.policy + '\n' +
-        'Comentario de rechazo: ' + data.rejectionComment
+        'Comentario: ' + data.rejectionComment
       );
+    }
+
+    /**
+     * REJECTED: Reintento / Ticket to area / Manual review
+     * Manual review solo si reintento Y ticket no funcionaron (Lucidchart).
+     */
+    function buildRejectedActions(payload) {
+      const nid = payload.nid;
+      const area = (payload.data && payload.data.area) || 'Área responsable';
+      const session = getSession(nid);
+      const canManual = session.retryTried && session.ticketTried;
+
+      return [
+        {
+          label: 'Reintento',
+          onClick: async function () {
+            session.retryTried = true;
+            addUserMessage('Reintento: ' + nid);
+            await consultNid(nid);
+          }
+        },
+        {
+          label: 'Ticket to area',
+          onClick: async function () {
+            session.ticketTried = true;
+            addUserMessage('Ticket to area');
+            await createAndWatchTicket(nid, 'solution', area);
+          }
+        },
+        {
+          label: 'Manual review',
+          disabled: !canManual,
+          disabledReason:
+            'Disponible solo si Reintento y Ticket to area no funcionaron.',
+          onClick: async function () {
+            addUserMessage('Manual review');
+            await createAndWatchTicket(nid, 'manual', area);
+          }
+        }
+      ];
+    }
+
+    async function createAndWatchTicket(nid, type, area) {
+      try {
+        const response = await fetch('/api/ticket', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nid: nid, type: type, area: area })
+        });
+        const ticket = await response.json();
+
+        if (!response.ok) {
+          addBotMessage('Error: ' + (ticket.error || 'No se pudo crear el ticket.'));
+          return;
+        }
+
+        addBotMessage(ticket.message + '\nTicket: ' + ticket.ticketId);
+
+        // Lucidchart: Mantener ticket actualizado hasta resolución → Notificar cierre → End
+        await waitForTicketClose(ticket.ticketId);
+      } catch (err) {
+        addBotMessage('No se pudo conectar con Ticketing. ¿El servidor está activo?');
+      }
+    }
+
+    async function waitForTicketClose(ticketId) {
+      for (var i = 0; i < 20; i++) {
+        await sleep(500);
+        try {
+          const response = await fetch('/api/ticket/' + ticketId);
+          if (!response.ok) continue;
+          const ticket = await response.json();
+          if (ticket.status === 'CLOSED') {
+            addBotMessage(
+              'Ticket ' +
+                ticketId +
+                ' cerrado.\nÁrea: ' +
+                ticket.area +
+                '\nCierre: ' +
+                ticket.closedAt +
+                '\n\nFin del flujo.'
+            );
+            return;
+          }
+        } catch (err) {
+          // reintentar polling
+        }
+      }
+      addBotMessage('El ticket ' + ticketId + ' sigue en seguimiento. Te notificaremos al cierre.');
+    }
+
+    function sleep(ms) {
+      return new Promise(function (resolve) {
+        setTimeout(resolve, ms);
+      });
     }
 
     async function consultNid(nid) {
@@ -363,7 +481,6 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ nid: nid })
         });
-
         const payload = await response.json();
 
         if (!response.ok) {
@@ -374,41 +491,14 @@
         const text = formatBotResponse(payload);
 
         if (payload.status === 'REJECTED') {
-          addBotMessage(text, {
-            actions: [
-              {
-                label: 'Reintento',
-                onClick: function () {
-                  addUserMessage('Reintento: ' + nid);
-                  consultNid(nid);
-                }
-              },
-              {
-                label: 'Ticket to area',
-                onClick: function () {
-                  addUserMessage('Ticket to area');
-                  addBotMessage(
-                    'Ticket de solución creado en el sistema. Te notificaremos al cierre.'
-                  );
-                }
-              },
-              {
-                label: 'Manual review',
-                onClick: function () {
-                  addUserMessage('Manual review');
-                  addBotMessage(
-                    'Ticket de validación manual creado. Te notificaremos al cierre.'
-                  );
-                }
-              }
-            ]
-          });
+          addBotMessage(text, buildRejectedActions(payload));
         } else {
+          // COMPLETED e IN_PROGRESS terminan en End (sin botones)
           addBotMessage(text);
         }
       } catch (err) {
         addBotMessage(
-          'No pude conectar con el servidor. Verifica que esté corriendo en el puerto 3000.'
+          'No pude conectar con el orquestador. Verifica el servidor en el puerto 3000.'
         );
       } finally {
         setLoading(false);
